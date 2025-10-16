@@ -1,0 +1,6 @@
+com/example/recipefinder/db/DatabaseConfig.class
+com/example/recipefinder/db/RecipeDAO.class
+com/example/recipefinder/MainApp.class
+com/example/recipefinder/ui/UIManager.class
+com/example/recipefinder/db/DatabaseHandler.class
+com/example/recipefinder/model/Recipe.class
