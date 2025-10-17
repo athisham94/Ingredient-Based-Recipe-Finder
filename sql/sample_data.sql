@@ -10,7 +10,7 @@ INSERT INTO recipes (name, instructions) VALUES
 ('Fried Rice', 'Cook rice, stir-fry with egg, onion, garlic, and soy/salt.'),
 ('Mashed Potato', 'Boil potatoes, mash with butter and milk.');
 
--- mapping
+
 INSERT INTO recipe_ingredients (recipe_id, ingredient_id) VALUES
 (1, (SELECT id FROM ingredients WHERE name='egg')),
 (1, (SELECT id FROM ingredients WHERE name='milk')),

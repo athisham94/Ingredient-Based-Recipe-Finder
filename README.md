@@ -1,0 +1,3 @@
+```bash
+    mvn javafx:run
+```
