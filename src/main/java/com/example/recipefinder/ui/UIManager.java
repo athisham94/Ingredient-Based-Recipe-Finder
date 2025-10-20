@@ -1,214 +1,206 @@
 package com.example.recipefinder.ui;
 
+import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+
 import com.example.recipefinder.db.RecipeDAO;
+import com.example.recipefinder.logic.RecipeMatcher;
 import com.example.recipefinder.model.Recipe;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+
+import javafx.application.Platform;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.scene.Node;
-import javafx.scene.Parent;
-import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
-import javafx.scene.layout.*;
+import javafx.scene.control.Alert;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextArea;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Priority;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.scene.text.Text;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
+/**
+ * JavaFX UI Manager
+ * Builds the complete frontend dynamically in Java code (no FXML).
+ * Features:
+ *  - Input TextField for comma-separated ingredients
+ *  - Search button to query DB
+ *  - Scrollable list of result “cards”
+ *  - Each card shows name, ingredients, instructions, and match %
+ */
 public class UIManager {
-    private BorderPane root;
-    private TextField inputField;
-    private CheckBox onlyExact;
-    private RecipeDAO dao;
-    private List<String> knownIngredients;
+    private final VBox root;
+    private final TextField inputField;
+    private final Button searchBtn;
+    private final VBox resultsBox;
+    private final Label statusLabel;
+    private final RecipeDAO dao = new RecipeDAO();
 
     public UIManager() {
-        root = new BorderPane();
+        root = new VBox(10);
         root.setPadding(new Insets(12));
-        try {
-            dao = new RecipeDAO();
-            knownIngredients = dao.listAllIngredientNames();
-        } catch (Exception e) {
-            knownIngredients = new ArrayList<>();
-        }
-        root.setTop(buildInputArea());
-        root.setCenter(new Label("Enter ingredients and press Search"));
-    }
 
-    public Parent getRoot() { return root; }
-
-    private Node buildInputArea() {
-        HBox topBox = new HBox(8);
-        topBox.setPadding(new Insets(8, 0, 8, 0));
-
+        // Top input bar
+        HBox top = new HBox(8);
         inputField = new TextField();
-        inputField.setPromptText("Enter ingredients (comma separated), e.g. egg, bread, butter");
-        HBox.setHgrow(inputField, Priority.ALWAYS);
+        inputField.setPromptText("Enter ingredients, comma-separated (e.g. egg, rice, salt)");
+        inputField.setPrefWidth(480);
+        searchBtn = new Button("Search");
+        searchBtn.setOnAction(e -> onSearch());
+        top.getChildren().addAll(inputField, searchBtn);
 
-        // Simple autocomplete: press TAB to complete the last token
-        inputField.setOnKeyPressed(evt -> {
-            if (evt.getCode() == KeyCode.TAB) {
-                String txt = inputField.getText();
-                String[] parts = txt.split(",");
-                String last = parts[parts.length - 1].trim().toLowerCase();
-                if (!last.isEmpty()) {
-                    Optional<String> match = knownIngredients.stream()
-                            .filter(i -> i.startsWith(last))
-                            .findFirst();
-                    match.ifPresent(m -> {
-                        parts[parts.length - 1] = " " + m;
-                        inputField.setText(String.join(",", parts));
-                        inputField.positionCaret(inputField.getText().length());
-                    });
-                }
-                evt.consume();
-            }
-        });
+        statusLabel = new Label();
+        resultsBox = new VBox(10);
 
-        Button searchBtn = new Button("Search");
-        searchBtn.setOnAction(e -> {
-            List<String> userIngredients = parseInput(inputField.getText());
-            performSearch(userIngredients);
-        });
+        ScrollPane sp = new ScrollPane(resultsBox);
+        sp.setFitToWidth(true);
+        sp.setPrefHeight(500);
 
-        onlyExact = new CheckBox("Only show recipes I can make now");
-        onlyExact.setSelected(false);
-
-        Button viewFavBtn = new Button("View Favorites");
-        viewFavBtn.setOnAction(e -> showFavoritesDialog());
-
-        topBox.getChildren().addAll(inputField, searchBtn, onlyExact, viewFavBtn);
-        return topBox;
+        root.getChildren().addAll(top, statusLabel, sp);
     }
 
-    private List<String> parseInput(String raw) {
+    public Node getRoot() {
+        return root;
+    }
+
+    /** Parse user input into lowercase tokens */
+    private List<String> parseTokens(String raw) {
+        if (raw == null || raw.isBlank()) return new ArrayList<>();
         return Arrays.stream(raw.split(","))
                 .map(String::trim)
                 .filter(s -> !s.isEmpty())
                 .map(String::toLowerCase)
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    private void performSearch(List<String> userIngredients) {
-        VBox resultsBox = new VBox(8);
-        resultsBox.setPadding(new Insets(10));
-        if (userIngredients.isEmpty()) {
-            resultsBox.getChildren().add(new Label("Please enter at least one ingredient."));
-            root.setCenter(resultsBox);
+    /** Triggered when user clicks Search */
+    private void onSearch() {
+        String raw = inputField.getText();
+        List<String> tokens = parseTokens(raw);
+        if (tokens.isEmpty()) {
+            statusLabel.setText("Please enter one or more ingredients.");
             return;
         }
 
-        try {
-            List<Recipe> matches = dao.findByIngredients(userIngredients);
-            if (onlyExact.isSelected()) {
-                matches = matches.stream()
-                        .filter(r -> r.getMatchedCount() == r.getTotalCount())
-                        .collect(Collectors.toList());
-            }
+        statusLabel.setText("Searching...");
+        resultsBox.getChildren().clear();
 
-            if (matches.isEmpty()) {
-                resultsBox.getChildren().add(new Label("No recipes found. Try adding more ingredients."));
-            } else {
-                for (Recipe r : matches) {
-                    double pct = (r.getTotalCount() == 0) ? 0.0 : (r.getMatchedCount() * 100.0 / r.getTotalCount());
-                    VBox card = new VBox(6);
-                    card.setPadding(new Insets(8));
-                    card.setStyle("-fx-border-color: #d0d0d0; -fx-background-color: #fff;");
-
-                    Label title = new Label(r.getName() + String.format("  (%.0f%% match)", pct));
-                    title.setStyle("-fx-font-weight: bold; -fx-font-size: 14px;");
-
-                    Label instr = new Label("Instructions: " + r.getInstructions());
-                    List<String> missing = dao.getMissingIngredients(r.getId(), userIngredients);
-                    Label missLabel = new Label("Missing: " + (missing.isEmpty() ? "None" : String.join(", ", missing)));
-
-                    HBox actions = new HBox(8);
-                    Button saveFav = new Button("Save to Favorites");
-                    saveFav.setOnAction(ev -> {
-                        TextInputDialog dialog = new TextInputDialog();
-                        dialog.setHeaderText("Optional note for favorite (or leave empty)");
-                        dialog.setTitle("Save Favorite");
-                        dialog.setContentText("Note:");
-                        Optional<String> res = dialog.showAndWait();
-                        String note = res.orElse("");
-                        try {
-                            dao.saveFavorite(r.getId(), note);
-                            Alert a = new Alert(Alert.AlertType.INFORMATION, "Saved to favorites.");
-                            a.show();
-                        } catch (Exception ex) {
-                            Alert a = new Alert(Alert.AlertType.ERROR, "Error saving favorite: " + ex.getMessage());
-                            a.show();
-                            ex.printStackTrace();
-                        }
-                    });
-
-                    Button details = new Button("Show Details");
-                    details.setOnAction(ev -> {
-                        Alert d = new Alert(Alert.AlertType.INFORMATION);
-                        d.setTitle(r.getName());
-                        d.setHeaderText(r.getName());
-                        String body = "Instructions:\n" + r.getInstructions() + "\n\nMissing: " + (missing.isEmpty() ? "None" : String.join(", ", missing));
-                        d.setContentText(body);
-                        d.showAndWait();
-                    });
-
-                    actions.getChildren().addAll(saveFav, details);
-                    card.getChildren().addAll(title, instr, missLabel, actions);
-                    resultsBox.getChildren().add(card);
+        // Run search in background to avoid freezing UI
+        Task<List<Recipe>> task = new Task<>() {
+            @Override
+            protected List<Recipe> call() {
+                try {
+                    List<Recipe> candidates = dao.findByTokens(tokens, 500);
+                    List<Recipe> matched = new ArrayList<>();
+                    for (Recipe r : candidates) {
+                        double pct = RecipeMatcher.computeMatchPercent(tokens, r);
+                        if (pct > 0) matched.add(r);
+                    }
+                    matched.sort((a, b) -> Double.compare(b.getMatchPercent(), a.getMatchPercent()));
+                    return matched;
+                } catch (SQLException ex) {
+                    ex.printStackTrace();
+                    return List.of();
                 }
             }
-        } catch (Exception ex) {
-            resultsBox.getChildren().add(new Label("Error: " + ex.getMessage()));
-            ex.printStackTrace();
-        }
-        root.setCenter(new ScrollPane(resultsBox));
+        };
+
+        task.setOnSucceeded(evt -> {
+            List<Recipe> results = task.getValue();
+            if (results.isEmpty()) {
+                statusLabel.setText("No recipes found. Try adding more ingredients.");
+            } else {
+                statusLabel.setText("Found " + results.size() + " recipes.");
+                results.forEach(r -> resultsBox.getChildren().add(buildCard(r)));
+            }
+        });
+
+        task.setOnFailed(evt -> {
+            statusLabel.setText("Search failed: " + task.getException().getMessage());
+            task.getException().printStackTrace();
+        });
+
+        Thread t = new Thread(task);
+        t.setDaemon(true);
+        t.start();
     }
 
-    private void showFavoritesDialog() {
-        try {
-            List<Recipe> favs = dao.listFavorites();
-            if (favs.isEmpty()) {
-                Alert a = new Alert(Alert.AlertType.INFORMATION, "No favorites saved yet.");
-                a.show();
-                return;
-            }
+    /** Create a styled card for each recipe */
+    private Node buildCard(Recipe r) {
+        VBox card = new VBox(6);
+        card.setPadding(new Insets(10));
+        card.setStyle("""
+                -fx-background-color: white;
+                -fx-border-color: #ccc;
+                -fx-border-radius: 8;
+                -fx-background-radius: 8;
+                -fx-effect: dropshadow(two-pass-box, rgba(0,0,0,0.08), 5, 0, 2, 2);
+                """);
 
-            Dialog<ButtonType> dialog = new Dialog<>();
-            dialog.setTitle("Favorites");
-            DialogPane pane = dialog.getDialogPane();
+        HBox header = new HBox(10);
+        Text title = new Text(r.getName());
+        title.setStyle("-fx-font-weight: bold; -fx-font-size: 14;");
+        Text meta = new Text(String.format("%.0f%% match • %s",
+                r.getMatchPercent(),
+                r.getCategory() == null ? "Uncategorized" : r.getCategory()));
+        meta.setStyle("-fx-fill: #555; -fx-font-size: 11;");
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+        header.getChildren().addAll(title, spacer, meta);
 
-            VBox content = new VBox(8);
-            content.setPadding(new Insets(10));
+        Label ingred = new Label("Ingredients: " + safe(r.getIngredients()));
+        ingred.setWrapText(true);
+        Label instr = new Label("Instructions: " + safe(r.getInstructions()));
+        instr.setWrapText(true);
 
-            for (Recipe r : favs) {
-                VBox card = new VBox(6);
-                card.setPadding(new Insets(8));
-                card.setStyle("-fx-border-color: #cfcfcf; -fx-background-color: #fff;");
-                Label title = new Label(r.getName());
-                title.setStyle("-fx-font-weight: bold;");
-                Label instr = new Label("Instructions: " + r.getInstructions());
-                Button remove = new Button("Remove Favorite");
-                // recall: we put favorites.id into matchedCount to carry it through
-                int favId = r.getMatchedCount();
-                remove.setOnAction(ev -> {
-                    try {
-                        dao.removeFavorite(favId);
-                        dialog.close();
-                        showFavoritesDialog(); // refresh
-                    } catch (Exception ex) {
-                        new Alert(Alert.AlertType.ERROR, "Error removing favorite: " + ex.getMessage()).show();
-                    }
-                });
-                card.getChildren().addAll(title, instr, remove);
-                content.getChildren().add(card);
-            }
+        HBox actions = new HBox(6);
+        Button viewBtn = new Button("View Details");
+        viewBtn.setOnAction(e -> showRecipeDetails(r));
+        actions.getChildren().addAll(viewBtn);
 
-            pane.setContent(new ScrollPane(content));
-            pane.getButtonTypes().add(ButtonType.CLOSE);
-            dialog.showAndWait();
+        card.getChildren().addAll(header, ingred, instr, actions);
+        return card;
+    }
 
-        } catch (Exception ex) {
-            new Alert(Alert.AlertType.ERROR, "Error loading favorites: " + ex.getMessage()).show();
-            ex.printStackTrace();
-        }
+    /** Display a pop-up dialog with full recipe details */
+    private void showRecipeDetails(Recipe r) {
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle(r.getName());
+            alert.setHeaderText(null);
+
+            StringBuilder sb = new StringBuilder();
+            sb.append("Category: ").append(safe(r.getCategory())).append("\n\n");
+            sb.append("Ingredients:\n").append(safe(r.getIngredients())).append("\n\n");
+            sb.append("Quantities:\n").append(safe(r.getRecipeIngredientQuantities())).append("\n\n");
+            sb.append("Instructions:\n").append(safe(r.getInstructions())).append("\n\n");
+            sb.append("Calories: ").append(safeNum(r.getCalories())).append("\n");
+            sb.append("Protein: ").append(safeNum(r.getProteinContent())).append("\n");
+            sb.append("Fat: ").append(safeNum(r.getFatContent())).append("\n");
+            sb.append("Fiber: ").append(safeNum(r.getFiberContent())).append("\n");
+            sb.append("Sugar: ").append(safeNum(r.getSugarContent())).append("\n");
+
+            TextArea area = new TextArea(sb.toString());
+            area.setEditable(false);
+            area.setWrapText(true);
+            area.setPrefWidth(500);
+            area.setPrefHeight(300);
+            alert.getDialogPane().setContent(area);
+            alert.showAndWait();
+        });
+    }
+
+    private String safe(String s) {
+        return (s == null || s.isBlank()) ? "—" : s;
+    }
+
+    private String safeNum(Double d) {
+        return d == null ? "—" : String.format("%.1f", d);
     }
 }

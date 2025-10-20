@@ -1,39 +1,12 @@
-INSERT INTO ingredients (name) VALUES
-('egg'), ('milk'), ('bread'), ('butter'), ('cheese'),
-('tomato'), ('onion'), ('rice'), ('salt'), ('pepper'),
-('pasta'), ('olive oil'), ('garlic'), ('potato');
+INSERT INTO recipes (
+  name, description, category, ingredients, recipeingredientquantities,
+  calories, fat_content, fiber_content, sugar_content, protein_content,
+  instructions, image_path
+) VALUES
+('Egg Fried Rice', 'Quick rice dish with eggs and soy sauce.', 'Main Course',
+ 'eggs, rice, soy sauce, oil', '2 eggs, 1 cup rice, 1 tbsp soy sauce, 1 tbsp oil',
+ 300, 10, 2, 3, 12, '1. Cook rice.\n2. Scramble eggs.\n3. Mix everything.', NULL),
 
-INSERT INTO recipes (name, instructions) VALUES
-('Scrambled Eggs', 'Beat eggs with milk, cook in butter, season with salt and pepper.'),
-('Grilled Cheese', 'Butter bread, add cheese, grill until golden.'),
-('Tomato Pasta', 'Cook pasta, make sauce with tomato, garlic and olive oil.'),
-('Fried Rice', 'Cook rice, stir-fry with egg, onion, garlic, and soy/salt.'),
-('Mashed Potato', 'Boil potatoes, mash with butter and milk.');
-
-
-INSERT INTO recipe_ingredients (recipe_id, ingredient_id) VALUES
-(1, (SELECT id FROM ingredients WHERE name='egg')),
-(1, (SELECT id FROM ingredients WHERE name='milk')),
-(1, (SELECT id FROM ingredients WHERE name='butter')),
-(1, (SELECT id FROM ingredients WHERE name='salt')),
-
-(2, (SELECT id FROM ingredients WHERE name='bread')),
-(2, (SELECT id FROM ingredients WHERE name='cheese')),
-(2, (SELECT id FROM ingredients WHERE name='butter')),
-
-(3, (SELECT id FROM ingredients WHERE name='pasta')),
-(3, (SELECT id FROM ingredients WHERE name='tomato')),
-(3, (SELECT id FROM ingredients WHERE name='garlic')),
-(3, (SELECT id FROM ingredients WHERE name='olive oil')),
-(3, (SELECT id FROM ingredients WHERE name='salt')),
-
-(4, (SELECT id FROM ingredients WHERE name='rice')),
-(4, (SELECT id FROM ingredients WHERE name='egg')),
-(4, (SELECT id FROM ingredients WHERE name='onion')),
-(4, (SELECT id FROM ingredients WHERE name='garlic')),
-(4, (SELECT id FROM ingredients WHERE name='salt')),
-
-(5, (SELECT id FROM ingredients WHERE name='potato')),
-(5, (SELECT id FROM ingredients WHERE name='butter')),
-(5, (SELECT id FROM ingredients WHERE name='milk')),
-(5, (SELECT id FROM ingredients WHERE name='salt'));
+('Pancakes', 'Fluffy breakfast pancakes.', 'Breakfast',
+ 'flour, egg, milk, sugar, butter', '1 cup flour, 1 egg, 1 cup milk, 2 tbsp sugar, 1 tbsp butter',
+ 220, 6, 1, 10, 5, '1. Mix. 2. Cook on pan.', NULL);

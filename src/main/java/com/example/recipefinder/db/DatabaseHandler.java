@@ -5,7 +5,12 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 
 public class DatabaseHandler {
-    public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER, DatabaseConfig.PASS);
+    private static Connection conn;
+
+    public static synchronized Connection getConnection() throws SQLException {
+        if (conn == null || conn.isClosed()) {
+            conn = DriverManager.getConnection(DatabaseConfig.URL, DatabaseConfig.USER, DatabaseConfig.PASSWORD);
+        }
+        return conn;
     }
 }
