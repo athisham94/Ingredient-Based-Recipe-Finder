@@ -1,8 +1,15 @@
 com/example/recipefinder/db/DatabaseConfig.class
-com/example/recipefinder/ui/UIManager$1.class
+com/example/recipefinder/ui/UIManager$4.class
+com/example/recipefinder/ui/UIManager$3.class
 com/example/recipefinder/db/RecipeDAO.class
 com/example/recipefinder/MainApp.class
+com/example/recipefinder/ui/UIManager$5.class
+com/example/recipefinder/ui/UIManager$2.class
+com/example/recipefinder/db/DatabaseHandler.class
+com/example/recipefinder/ui/UIManager$6.class
+com/example/recipefinder/ui/UIManager$7.class
+com/example/recipefinder/ui/UIManager$1.class
 com/example/recipefinder/ui/UIManager.class
 com/example/recipefinder/logic/RecipeMatcher.class
-com/example/recipefinder/db/DatabaseHandler.class
+com/example/recipefinder/logic/RecipeMatcher$Scored.class
 com/example/recipefinder/model/Recipe.class

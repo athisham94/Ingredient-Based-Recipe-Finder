@@ -1,5 +1,11 @@
 package com.example.recipefinder.model;
 
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Recipe model — includes runtime fields for matching & scoring.
+ */
 public class Recipe {
     private int id;
     private String name;
@@ -15,8 +21,10 @@ public class Recipe {
     private String instructions;
     private String imagePath;
 
-    // matchPercent used at runtime (not stored)
-    private double matchPercent;
+    // Runtime-only fields (not persisted)
+    private double matchPercent = 0.0;
+    private double matchScore = 0.0;              // rarity-weighted score
+    private List<String> missingIngredients = new ArrayList<>();
 
     // Getters / setters
     public int getId() { return id; }
@@ -35,7 +43,9 @@ public class Recipe {
     public void setIngredients(String ingredients) { this.ingredients = ingredients; }
 
     public String getRecipeIngredientQuantities() { return recipeIngredientQuantities; }
-    public void setRecipeIngredientQuantities(String recipeIngredientQuantities) { this.recipeIngredientQuantities = recipeIngredientQuantities; }
+    public void setRecipeIngredientQuantities(String recipeIngredientQuantities) {
+        this.recipeIngredientQuantities = recipeIngredientQuantities;
+    }
 
     public Double getCalories() { return calories; }
     public void setCalories(Double calories) { this.calories = calories; }
@@ -58,6 +68,15 @@ public class Recipe {
     public String getImagePath() { return imagePath; }
     public void setImagePath(String imagePath) { this.imagePath = imagePath; }
 
+    // Runtime fields
     public double getMatchPercent() { return matchPercent; }
     public void setMatchPercent(double matchPercent) { this.matchPercent = matchPercent; }
+
+    public double getMatchScore() { return matchScore; }
+    public void setMatchScore(double matchScore) { this.matchScore = matchScore; }
+
+    public List<String> getMissingIngredients() { return missingIngredients; }
+    public void setMissingIngredients(List<String> missingIngredients) {
+        this.missingIngredients = missingIngredients == null ? new ArrayList<>() : missingIngredients;
+    }
 }

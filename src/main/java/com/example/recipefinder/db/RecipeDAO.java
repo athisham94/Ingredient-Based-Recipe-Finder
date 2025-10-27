@@ -4,123 +4,132 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
 
 import com.example.recipefinder.model.Recipe;
 
 /**
- * DAO for reading recipes from the recipes table.
- * - Uses tokenized LIKE search (LOWER(ingredients) LIKE ?).
- * - Keeps methods simple and synchronous (call from background thread in UI).
+ * RecipeDAO — database access for recipes and favorites.
+ * - getDistinctIngredients() for autocomplete
+ * - findByTokens() returns candidate recipes (UI computes match % / ranking)
+ * - favorites: save, list, remove
  */
 public class RecipeDAO {
 
     /**
-     * Find recipes containing ANY of the tokens. We return candidates and let
-     * caller compute a match percentage.
+     * Return a list of distinct ingredient tokens (lowercased & trimmed).
+     * Used for autocomplete suggestions.
+     */
+    public List<String> getDistinctIngredients() throws SQLException {
+        String sql = "SELECT DISTINCT trim(lower(unnest(string_to_array(ingredients, ',')))) AS name FROM recipes WHERE ingredients IS NOT NULL";
+        List<String> out = new ArrayList<>();
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                String name = rs.getString("name");
+                if (name != null && !name.isBlank()) out.add(name);
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Return candidate recipes. This implementation reads up to 'limit' recipes
+     * and returns them for the UI to compute match% and ranking.
+     *
+     * NOTE: For very large datasets (hundreds of thousands of rows) this should be
+     * replaced with a normalized recipe_ingredients table and indexed queries.
      */
     public List<Recipe> findByTokens(List<String> tokens, int limit) throws SQLException {
-        if (tokens == null || tokens.isEmpty()) return new ArrayList<>();
-
-        // Build WHERE clause: LOWER(ingredients) LIKE ? OR LOWER(ingredients) LIKE ? ...
-        StringBuilder sql = new StringBuilder("SELECT id, name, description, category, ingredients, recipeingredientquantities, calories, fat_content, fiber_content, sugar_content, protein_content, instructions, image_path FROM recipes WHERE ");
-        for (int i = 0; i < tokens.size(); i++) {
-            if (i > 0) sql.append(" OR ");
-            sql.append("LOWER(ingredients) LIKE ?");
-        }
-        sql.append(" ORDER BY id LIMIT ").append(limit > 0 ? limit : 200);
-
-        try (Connection conn = DatabaseHandler.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql.toString())) {
-            for (int i = 0; i < tokens.size(); i++) {
-                ps.setString(i + 1, "%" + tokens.get(i) + "%");
-            }
-            try (ResultSet rs = ps.executeQuery()) {
-                List<Recipe> out = new ArrayList<>();
-                while (rs.next()) {
-                    Recipe r = new Recipe();
-                    r.setId(rs.getInt("id"));
-                    r.setName(rs.getString("name"));
-                    r.setDescription(rs.getString("description"));
-                    r.setCategory(rs.getString("category"));
-                    r.setIngredients(rs.getString("ingredients"));
-                    r.setRecipeIngredientQuantities(rs.getString("recipeingredientquantities"));
-                    // numeric columns may be null
-                    r.setCalories(getNullableDouble(rs, "calories"));
-                    r.setFatContent(getNullableDouble(rs, "fat_content"));
-                    r.setFiberContent(getNullableDouble(rs, "fiber_content"));
-                    r.setSugarContent(getNullableDouble(rs, "sugar_content"));
-                    r.setProteinContent(getNullableDouble(rs, "protein_content"));
-                    r.setInstructions(rs.getString("instructions"));
-                    r.setImagePath(rs.getString("image_path"));
-                    out.add(r);
-                }
-                return out;
-            }
-        }
-    }
-
-    public List<Recipe> listAll(int limit) throws SQLException {
-        String sql = "SELECT id, name, description, category, ingredients, recipeingredientquantities, calories, fat_content, fiber_content, sugar_content, protein_content, instructions, image_path FROM recipes ORDER BY id LIMIT ?";
+        String sql = "SELECT id, name, description, category, ingredients, recipeingredientquantities, " +
+                "calories, fat_content, fiber_content, sugar_content, protein_content, instructions, image_path " +
+                "FROM recipes WHERE ingredients IS NOT NULL LIMIT ?";
+        List<Recipe> out = new ArrayList<>();
         try (Connection conn = DatabaseHandler.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, limit > 0 ? limit : 200);
+            ps.setInt(1, Math.max(1, limit));
             try (ResultSet rs = ps.executeQuery()) {
-                List<Recipe> out = new ArrayList<>();
                 while (rs.next()) {
-                    Recipe r = new Recipe();
-                    r.setId(rs.getInt("id"));
-                    r.setName(rs.getString("name"));
-                    r.setDescription(rs.getString("description"));
-                    r.setCategory(rs.getString("category"));
-                    r.setIngredients(rs.getString("ingredients"));
-                    r.setRecipeIngredientQuantities(rs.getString("recipeingredientquantities"));
-                    r.setCalories(getNullableDouble(rs, "calories"));
-                    r.setFatContent(getNullableDouble(rs, "fat_content"));
-                    r.setFiberContent(getNullableDouble(rs, "fiber_content"));
-                    r.setSugarContent(getNullableDouble(rs, "sugar_content"));
-                    r.setProteinContent(getNullableDouble(rs, "protein_content"));
-                    r.setInstructions(rs.getString("instructions"));
-                    r.setImagePath(rs.getString("image_path"));
+                    Recipe r = mapRowToRecipe(rs);
                     out.add(r);
                 }
-                return out;
             }
         }
+        return out;
     }
 
-    public Recipe getById(int id) throws SQLException {
-        String sql = "SELECT id, name, description, category, ingredients, recipeingredientquantities, calories, fat_content, fiber_content, sugar_content, protein_content, instructions, image_path FROM recipes WHERE id = ?";
-        try (Connection conn = DatabaseHandler.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setInt(1, id);
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    Recipe r = new Recipe();
-                    r.setId(rs.getInt("id"));
-                    r.setName(rs.getString("name"));
-                    r.setDescription(rs.getString("description"));
-                    r.setCategory(rs.getString("category"));
-                    r.setIngredients(rs.getString("ingredients"));
-                    r.setRecipeIngredientQuantities(rs.getString("recipeingredientquantities"));
-                    r.setCalories(getNullableDouble(rs, "calories"));
-                    r.setFatContent(getNullableDouble(rs, "fat_content"));
-                    r.setFiberContent(getNullableDouble(rs, "fiber_content"));
-                    r.setSugarContent(getNullableDouble(rs, "sugar_content"));
-                    r.setProteinContent(getNullableDouble(rs, "protein_content"));
-                    r.setInstructions(rs.getString("instructions"));
-                    r.setImagePath(rs.getString("image_path"));
-                    return r;
-                } else {
-                    return null;
-                }
-            }
-        }
+    private Recipe mapRowToRecipe(ResultSet rs) throws SQLException {
+        Recipe r = new Recipe();
+        r.setId(rs.getInt("id"));
+        r.setName(rs.getString("name"));
+        r.setDescription(rs.getString("description"));
+        r.setCategory(rs.getString("category"));
+        r.setIngredients(rs.getString("ingredients"));
+        r.setRecipeIngredientQuantities(rs.getString("recipeingredientquantities"));
+        // numeric columns may be null — handle gracefully
+        r.setCalories(getNullableDouble(rs, "calories"));
+        r.setFatContent(getNullableDouble(rs, "fat_content"));
+        r.setFiberContent(getNullableDouble(rs, "fiber_content"));
+        r.setSugarContent(getNullableDouble(rs, "sugar_content"));
+        r.setProteinContent(getNullableDouble(rs, "protein_content"));
+        r.setInstructions(rs.getString("instructions"));
+        r.setImagePath(rs.getString("image_path"));
+        return r;
     }
 
-    private static Double getNullableDouble(ResultSet rs, String col) throws SQLException {
+    private Double getNullableDouble(ResultSet rs, String col) throws SQLException {
         double v = rs.getDouble(col);
         return rs.wasNull() ? null : v;
+    }
+
+    // ---------------------------
+    // Favorites methods
+    // ---------------------------
+
+    /**
+     * Save a favorite. Note: favorites table must exist.
+     */
+    public void saveFavorite(int recipeId, String note) throws SQLException {
+        String sql = "INSERT INTO favorites (recipe_id, note) VALUES (?, ?)";
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, recipeId);
+            if (note == null || note.isBlank()) ps.setNull(2, Types.VARCHAR);
+            else ps.setString(2, note);
+            ps.executeUpdate();
+        }
+    }
+
+    /**
+     * List favorite recipes (most recent first).
+     */
+    public List<Recipe> listFavorites() throws SQLException {
+        String sql = "SELECT r.id, r.name, r.description, r.category, r.ingredients, r.recipeingredientquantities, " +
+                "r.calories, r.fat_content, r.fiber_content, r.sugar_content, r.protein_content, r.instructions, r.image_path " +
+                "FROM favorites f JOIN recipes r ON f.recipe_id = r.id ORDER BY f.saved_at DESC";
+        List<Recipe> out = new ArrayList<>();
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while (rs.next()) {
+                out.add(mapRowToRecipe(rs));
+            }
+        }
+        return out;
+    }
+
+    /**
+     * Remove a favorite by recipe id.
+     */
+    public void removeFavorite(int recipeId) throws SQLException {
+        String sql = "DELETE FROM favorites WHERE recipe_id = ?";
+        try (Connection conn = DatabaseHandler.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, recipeId);
+            ps.executeUpdate();
+        }
     }
 }
