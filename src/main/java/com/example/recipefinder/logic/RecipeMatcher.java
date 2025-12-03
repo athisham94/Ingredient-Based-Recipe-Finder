@@ -10,15 +10,14 @@ import java.util.stream.Collectors;
 import com.example.recipefinder.db.RecipeDAO;
 import com.example.recipefinder.model.Recipe;
 
-/**
- * RecipeMatcher with simple token normalization (plural removal / light stemming)
- * and paging support.
- */
+
+ //RecipeMatcher with simple token normalization and paging support.
+ 
 public class RecipeMatcher {
 
-    /**
-     * Normalize a single token: lowercase, strip punctuation, simple plural/stem heuristics.
-     */
+    
+    //normalize a single token: lowercase, strip punctuation, simple plural
+     
     public static String normalizeToken(String token) {
         if (token == null) return "";
         String s = token.trim().toLowerCase();
@@ -53,11 +52,11 @@ public class RecipeMatcher {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * tokens: user tokens (already raw)
-     * onlyDoable: whether to only return 100% matches
-     * ingredientFreq: map for rarity weighting
-     * limit, offset: paging
+    /*
+    tokens: user tokens (already raw)
+     onlyDoable: whether to only return 100% matches
+     ingredientFreq: map for rarity weighting
+     limit, offset: paging
      */
     public static List<Recipe> matchRecipes(List<String> rawTokens, boolean onlyDoable,
                                             Map<String, Integer> ingredientFreq,
@@ -127,7 +126,7 @@ public class RecipeMatcher {
             return Double.compare(b.matchPercent, a.matchPercent);
         });
 
-        // apply onlyDoable and then paging (offset, limit)
+        // apply only- doable and then paging (offset, limit)
         List<Recipe> filtered = scored.stream()
                 .map(s -> s.recipe)
                 .filter(r -> !onlyDoable || r.getMatchPercent() >= 100.0)

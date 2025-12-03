@@ -7,18 +7,18 @@ import javafx.scene.Parent;
 import javafx.scene.Scene;
 import javafx.stage.Stage;
 
-/**
- * Ingredient-Based Recipe Finder - fixed MainApp
- * Casts UIManager.getRoot() (Node) to Parent so Scene creation compiles.
- */
+
+ //
+ //Casts UIManager.getRoot() (Node) to parent,so scene creation compiles
+ 
 public class MainApp extends Application {
 
     @Override
     public void start(Stage primaryStage) {
         UIManager ui = new UIManager();
 
-        // ui.getRoot() returns a Node; Scene requires a Parent.
-        // Cast to Parent to satisfy the API without modifying UIManager.
+        // ui.getRoot() returns a Node- Scene requires a Parent.
+        
         Parent root = (Parent) ui.getRoot();
 
         Scene scene = new Scene(root, 950, 650);

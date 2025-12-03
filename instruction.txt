@@ -1,1 +1,10 @@
+psql -U recipe_user -d recipefinder
+
+SELECT id, name, category FROM recipes
+
+
 mvn javafx:run
+
+
+
+

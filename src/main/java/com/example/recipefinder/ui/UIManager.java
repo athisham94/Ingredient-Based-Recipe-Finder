@@ -50,10 +50,7 @@ import javafx.scene.text.Font;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 
-/**
- * UIManager - full-featured UI for Ingredient-Based Recipe Finder
- * - paste this file in src/main/java/com/example/recipefinder/ui/UIManager.java
- */
+
 public class UIManager {
 
     private final BorderPane root;
@@ -220,7 +217,7 @@ public class UIManager {
         if (!suggestionsMenu.isShowing()) suggestionsMenu.show(inputField, Side.BOTTOM, 0, 0);
     }
 
-    // ---------- Ingredient frequency loader (for rarity scoring) ----------
+    //  Ingredient frequency loader (for rarity scoring)
     private void loadIngredientFrequenciesInBackground() {
         Task<Map<String, Integer>> t = new Task<>() {
             @Override
@@ -245,7 +242,7 @@ public class UIManager {
         new Thread(t).start();
     }
 
-    // ---------- parse tokens helper ----------
+    // parse tokens helper 
     private List<String> parseTokens(String raw) {
         if (raw == null || raw.isBlank()) return List.of();
         return Arrays.stream(raw.split(","))
@@ -255,7 +252,7 @@ public class UIManager {
                 .collect(Collectors.toList());
     }
 
-    // ---------- Search & pagination ----------
+    // Search & pagination 
     private void performSearch() {
         currentOffset = 0;
         resultsList.getItems().clear();
@@ -276,7 +273,7 @@ public class UIManager {
             @Override
             protected List<Recipe> call() {
                 String selectedCategory = categoryBox.getValue();
-                // get page from matcher (it normalizes tokens and computes match %)
+                // get page from matcher -normalizes tokens and computes match percent
                 List<Recipe> page = RecipeMatcher.matchRecipes(tokens, doableOnlyCheck.isSelected(), ingredientFreq, PAGE_SIZE, currentOffset);
                 if (selectedCategory != null && !"All".equalsIgnoreCase(selectedCategory)) {
                     page = page.stream().filter(r -> selectedCategory.equalsIgnoreCase(Optional.ofNullable(r.getCategory()).orElse(""))).collect(Collectors.toList());
@@ -322,7 +319,7 @@ public class UIManager {
         container.setPadding(new Insets(10));
         container.setStyle("-fx-background-color: white; -fx-border-color: #eee; -fx-border-radius: 8; -fx-background-radius: 8;");
 
-        // left: optional image
+        //image
         if (r.getImagePath() != null && !r.getImagePath().isBlank()) {
             try {
                 Image img = new Image("file:" + r.getImagePath(), 100, 80, true, true, true);
@@ -423,7 +420,7 @@ public class UIManager {
         d.showAndWait();
     }
 
-    // ---------- Favorites dialog ----------
+    //  Favorites dialog
     private void showFavoritesDialog() {
         Task<List<Recipe>> t = new Task<>() {
             @Override

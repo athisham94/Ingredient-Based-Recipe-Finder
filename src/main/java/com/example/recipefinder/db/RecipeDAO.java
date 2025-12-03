@@ -10,18 +10,18 @@ import java.util.List;
 
 import com.example.recipefinder.model.Recipe;
 
-/**
- * RecipeDAO — database access for recipes and favorites.
- * - getDistinctIngredients() for autocomplete
- * - findByTokens() returns candidate recipes (UI computes match % / ranking)
- * - favorites: save, list, remove
- */
+
+ //RecipeDAO — database access for recipes and favorites.
+ //getDistinctIngredients() for autocomplete
+ //findByTokens() returns candidate recipes (UI computes match % / ranking)
+ //favorites: save, list, remove
+ 
 public class RecipeDAO {
 
-    /**
-     * Return a list of distinct ingredient tokens (lowercased & trimmed).
-     * Used for autocomplete suggestions.
-     */
+    
+     // Return a list of distinct ingredient tokens 
+     // Used for autocomplete suggestions.
+     
     public List<String> getDistinctIngredients() throws SQLException {
         String sql = "SELECT DISTINCT trim(lower(unnest(string_to_array(ingredients, ',')))) AS name FROM recipes WHERE ingredients IS NOT NULL";
         List<String> out = new ArrayList<>();
@@ -36,12 +36,10 @@ public class RecipeDAO {
         return out;
     }
 
-    /**
-     * Return candidate recipes. This implementation reads up to 'limit' recipes
-     * and returns them for the UI to compute match% and ranking.
-     *
-     * NOTE: For very large datasets (hundreds of thousands of rows) this should be
-     * replaced with a normalized recipe_ingredients table and indexed queries.
+    /*
+     return candidate recipes.
+     This implementation reads up to 'limit' recipes
+     and returns them for the UI to compute match% and ranking
      */
     public List<Recipe> findByTokens(List<String> tokens, int limit) throws SQLException {
         String sql = "SELECT id, name, description, category, ingredients, recipeingredientquantities, " +
@@ -85,13 +83,8 @@ public class RecipeDAO {
         return rs.wasNull() ? null : v;
     }
 
-    // ---------------------------
     // Favorites methods
-    // ---------------------------
-
-    /**
-     * Save a favorite. Note: favorites table must exist.
-     */
+    
     public void saveFavorite(int recipeId, String note) throws SQLException {
         String sql = "INSERT INTO favorites (recipe_id, note) VALUES (?, ?)";
         try (Connection conn = DatabaseHandler.getConnection();
@@ -103,8 +96,8 @@ public class RecipeDAO {
         }
     }
 
-    /**
-     * List favorite recipes (most recent first).
+    /*
+      List favorite recipes (most recent first).
      */
     public List<Recipe> listFavorites() throws SQLException {
         String sql = "SELECT r.id, r.name, r.description, r.category, r.ingredients, r.recipeingredientquantities, " +
@@ -121,9 +114,9 @@ public class RecipeDAO {
         return out;
     }
 
-    /**
-     * Remove a favorite by recipe id.
-     */
+    
+    //remove a favorite by recipe id.
+     
     public void removeFavorite(int recipeId) throws SQLException {
         String sql = "DELETE FROM favorites WHERE recipe_id = ?";
         try (Connection conn = DatabaseHandler.getConnection();

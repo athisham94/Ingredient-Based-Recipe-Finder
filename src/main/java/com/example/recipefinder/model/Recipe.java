@@ -3,16 +3,16 @@ package com.example.recipefinder.model;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Recipe model — includes runtime fields for matching & scoring.
- */
+
+ //Recipe model:includes runtime fields for matching & scoring.
+ 
 public class Recipe {
     private int id;
     private String name;
     private String description;
     private String category;
-    private String ingredients;                   // comma-separated names
-    private String recipeIngredientQuantities;    // measurements
+    private String ingredients;                   
+    private String recipeIngredientQuantities;    
     private Double calories;
     private Double fatContent;
     private Double fiberContent;
@@ -21,12 +21,12 @@ public class Recipe {
     private String instructions;
     private String imagePath;
 
-    // Runtime-only fields (not persisted)
+    // Runtime-only
     private double matchPercent = 0.0;
-    private double matchScore = 0.0;              // rarity-weighted score
+    private double matchScore = 0.0;              // rarity, weighted score
     private List<String> missingIngredients = new ArrayList<>();
 
-    // Getters / setters
+    // getters setters
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
 
